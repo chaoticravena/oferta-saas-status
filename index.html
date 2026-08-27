@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Status do Sistema</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #171a21;
+    --border: #262b36;
+    --text: #e6e8eb;
+    --muted: #9aa1ac;
+    --up: #22c55e;
+    --degraded: #eab308;
+    --down: #ef4444;
+    --unknown: #4b5563;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 48px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 4px;
+  }
+  /* placeholder de nome — sem marca definida ainda, trocar aqui quando decidir */
+  .brand-placeholder { color: var(--muted); font-size: 0.85rem; margin: 0 0 24px; }
+  .overall {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .dot.up { background: var(--up); }
+  .dot.degraded { background: var(--degraded); }
+  .dot.down { background: var(--down); }
+  .dot.unknown { background: var(--unknown); }
+  .overall-text { font-weight: 600; }
+  .updated { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+  .components {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .component-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+  }
+  .component-name { display: flex; align-items: center; gap: 10px; }
+  .component-status { color: var(--muted); font-size: 0.85rem; text-transform: capitalize; }
+  .uptime-title { font-size: 0.9rem; color: var(--muted); margin: 0 0 8px; }
+  .uptime-bar {
+    display: flex;
+    gap: 2px;
+    height: 32px;
+    overflow-x: auto;
+  }
+  .uptime-bar .bar {
+    flex: 1 0 3px;
+    min-width: 3px;
+    border-radius: 2px;
+    background: var(--unknown);
+  }
+  .uptime-labels {
+    display: flex;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-top: 6px;
+  }
+  .error-state { color: var(--muted); text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Status do Sistema</h1>
+    <p class="brand-placeholder">nome do produto — placeholder</p>
+
+    <div class="overall" id="overall">
+      <span class="dot unknown" id="overall-dot"></span>
+      <div>
+        <div class="overall-text" id="overall-text">Carregando…</div>
+        <div class="updated" id="updated-text"></div>
+      </div>
+    </div>
+
+    <div class="components" id="components"></div>
+
+    <p class="uptime-title">Últimas 24h</p>
+    <div class="uptime-bar" id="uptime-bar"></div>
+    <div class="uptime-labels">
+      <span>24h atrás</span>
+      <span>agora</span>
+    </div>
+  </div>
+
+<script>
+  const LABELS = { api: "API", worker: "Worker", whatsapp: "WhatsApp" };
+  const STATUS_TEXT = { up: "Operacional", degraded: "Degradado", down: "Fora do ar", unknown: "Sem dados" };
+
+  function worstStatus(entry) {
+    const vals = [entry.api, entry.worker, entry.whatsapp];
+    if (vals.includes("down")) return "down";
+    if (vals.includes("degraded")) return "degraded";
+    if (vals.includes("unknown")) return "unknown";
+    return "up";
+  }
+
+  function render(history) {
+    const componentsEl = document.getElementById("components");
+    const overallDot = document.getElementById("overall-dot");
+    const overallText = document.getElementById("overall-text");
+    const updatedText = document.getElementById("updated-text");
+    const barEl = document.getElementById("uptime-bar");
+
+    if (!history.length) {
+      componentsEl.innerHTML = "";
+      overallText.textContent = "Sem dados ainda";
+      return;
+    }
+
+    const latest = history[history.length - 1];
+    const overall = worstStatus(latest);
+    overallDot.className = "dot " + overall;
+    overallText.textContent = { up: "Tudo operacional", degraded: "Desempenho degradado", down: "Sistema fora do ar", unknown: "Sem dados suficientes" }[overall];
+    updatedText.textContent = "Última checagem: " + new Date(latest.timestamp).toLocaleString("pt-BR");
+
+    componentsEl.innerHTML = "";
+    for (const key of ["api", "worker", "whatsapp"]) {
+      const status = latest[key] ?? "unknown";
+      const row = document.createElement("div");
+      row.className = "component-row";
+      row.innerHTML = `
+        <span class="component-name"><span class="dot ${status}"></span>${LABELS[key]}</span>
+        <span class="component-status">${STATUS_TEXT[status] ?? status}</span>
+      `;
+      componentsEl.appendChild(row);
+    }
+
+    barEl.innerHTML = "";
+    for (const entry of history) {
+      const bar = document.createElement("div");
+      bar.className = "bar " + worstStatus(entry);
+      bar.title = new Date(entry.timestamp).toLocaleString("pt-BR");
+      barEl.appendChild(bar);
+    }
+  }
+
+  fetch("status.json", { cache: "no-store" })
+    .then((res) => res.json())
+    .then(render)
+    .catch(() => {
+      document.getElementById("components").innerHTML = "";
+      document.getElementById("overall-text").textContent = "Não foi possível carregar o status";
+    });
+</script>
+</body>
+</html>
