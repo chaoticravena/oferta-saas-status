@@ -382,5 +382,11 @@
     "worker": "unknown",
     "whatsapp": "unknown",
     "timestamp": "2026-09-06T09:36:18Z"
+  },
+  {
+    "api": "down",
+    "worker": "unknown",
+    "whatsapp": "unknown",
+    "timestamp": "2026-09-06T13:06:00Z"
   }
 ]
