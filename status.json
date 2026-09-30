@@ -1330,5 +1330,11 @@
     "worker": "unknown",
     "whatsapp": "unknown",
     "timestamp": "2026-09-30T06:52:05Z"
+  },
+  {
+    "api": "down",
+    "worker": "unknown",
+    "whatsapp": "unknown",
+    "timestamp": "2026-09-30T13:04:25Z"
   }
 ]
